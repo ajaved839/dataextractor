@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+src/xlxs_dataextractor/__init__.py
+src/xlxs_dataextractor/app.py
+src/xlxs_dataextractor/cli.py
+src/xlxs_dataextractor/exporter.py
+src/xlxs_dataextractor/extractor.py
+src/xlxs_dataextractor/fields.py
+src/xlxs_dataextractor.egg-info/PKG-INFO
+src/xlxs_dataextractor.egg-info/SOURCES.txt
+src/xlxs_dataextractor.egg-info/dependency_links.txt
+src/xlxs_dataextractor.egg-info/entry_points.txt
+src/xlxs_dataextractor.egg-info/requires.txt
+src/xlxs_dataextractor.egg-info/top_level.txt
+tests/test_extractor.py

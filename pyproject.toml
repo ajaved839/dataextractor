@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xlxs-dataextractor"
+version = "0.1.0"
+description = "Offline desktop app for extracting discharge summary Excel files into column data."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openpyxl>=3.1.5",
+    "PySide6>=6.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pyinstaller>=6.0.0",
+]
+
+[project.scripts]
+xlxs-dataextractor = "xlxs_dataextractor.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

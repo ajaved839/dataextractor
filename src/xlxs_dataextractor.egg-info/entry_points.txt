@@ -1,0 +1,2 @@
+[console_scripts]
+xlxs-dataextractor = xlxs_dataextractor.app:main
