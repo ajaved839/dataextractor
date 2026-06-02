@@ -92,15 +92,23 @@ def _extract_inline(
             continue
 
         after_label = _value_after_label(field, cell.value)
-        if after_label:
+        if after_label and _is_valid_inline_value(field, after_label):
             return after_label
 
-        right_value = _first_value_to_right(worksheet, cell.row, cell.col, merged_lookup)
-        if right_value and not _is_any_label(right_value):
+        right_value = _first_value_to_right(worksheet, cell.row, cell.col, merged_lookup, field)
+        if right_value:
             return right_value
 
-        below_value = _first_value_below(worksheet, cell.row, cell.col, merged_lookup)
-        if below_value and not _is_any_label(below_value):
+        if field == "Contact":
+            adjacent_below = _first_value_below_adjacent(
+                worksheet, cell.row, cell.col, merged_lookup, field
+            )
+            if adjacent_below:
+                return adjacent_below
+            continue
+
+        below_value = _first_value_below(worksheet, cell.row, cell.col, merged_lookup, field)
+        if below_value:
             return below_value
     return ""
 
@@ -135,6 +143,7 @@ def _first_value_to_right(
     row: int,
     label_col: int,
     merged_lookup: dict[tuple[int, int], str],
+    field: str = "",
 ) -> str:
     seen: set[str] = set()
     for col in range(label_col + 1, worksheet.max_column + 1):
@@ -144,7 +153,8 @@ def _first_value_to_right(
         if not value or value in seen:
             continue
         seen.add(value)
-        return value
+        if _is_valid_inline_value(field, value):
+            return value
     return ""
 
 
@@ -153,6 +163,7 @@ def _first_value_below(
     label_row: int,
     col: int,
     merged_lookup: dict[tuple[int, int], str],
+    field: str = "",
 ) -> str:
     seen: set[str] = set()
     for row in range(label_row + 1, worksheet.max_row + 1):
@@ -162,8 +173,42 @@ def _first_value_below(
         if not value or value in seen:
             continue
         seen.add(value)
-        return value
+        if _is_valid_inline_value(field, value):
+            return value
     return ""
+
+
+def _first_value_below_adjacent(
+    worksheet: Worksheet,
+    label_row: int,
+    label_col: int,
+    merged_lookup: dict[tuple[int, int], str],
+    field: str,
+    max_offset: int = 3,
+) -> str:
+    for offset in range(1, max_offset + 1):
+        value = _first_value_below(
+            worksheet,
+            label_row,
+            label_col + offset,
+            merged_lookup,
+            field,
+        )
+        if value:
+            return value
+    return ""
+
+
+def _is_valid_inline_value(field: str, value: str) -> bool:
+    if _is_any_label(value):
+        return False
+    if field == "Contact" and _looks_like_date(value):
+        return False
+    return True
+
+
+def _looks_like_date(value: str) -> bool:
+    return bool(re.fullmatch(r"\d{1,2}/\d{1,2}/\d{4}", value.strip()))
 
 
 def _join_row(cells: list[CellText]) -> str:

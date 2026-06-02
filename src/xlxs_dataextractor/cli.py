@@ -17,10 +17,15 @@ def main() -> int:
         default=str(default_output_path()),
         help="Output .xlsx path. Defaults to Desktop/extracted_discharge_data.xlsx.",
     )
+    parser.add_argument(
+        "--append-to",
+        metavar="EXISTING",
+        help="Existing extracted .xlsx file. New rows are appended underneath.",
+    )
     args = parser.parse_args()
 
     results = [extract_workbook(Path(filename)) for filename in args.files]
-    write_results(results, args.output)
+    write_results(results, args.output, existing_path=args.append_to)
 
     for result in results:
         if result.missing_fields:

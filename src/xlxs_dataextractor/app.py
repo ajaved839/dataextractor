@@ -29,9 +29,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("XLXS Data Extractor")
         self.resize(860, 620)
         self.files: list[Path] = []
+        self.existing_extract: Path | None = None
 
         self.file_list = QListWidget()
         self.file_list.setAcceptDrops(False)
+
+        self.existing_extract_label = QLabel("No existing extract loaded.")
+        self.existing_extract_label.setWordWrap(True)
 
         self.status = QTextEdit()
         self.status.setReadOnly(True)
@@ -39,6 +43,12 @@ class MainWindow(QMainWindow):
 
         select_button = QPushButton("Select XLSX Files")
         select_button.clicked.connect(self.select_files)
+
+        existing_button = QPushButton("Load Existing Extract")
+        existing_button.clicked.connect(self.select_existing_extract)
+
+        clear_existing_button = QPushButton("Clear Existing Extract")
+        clear_existing_button.clicked.connect(self.clear_existing_extract)
 
         clear_button = QPushButton("Clear")
         clear_button.clicked.connect(self.clear_files)
@@ -48,6 +58,8 @@ class MainWindow(QMainWindow):
 
         button_row = QHBoxLayout()
         button_row.addWidget(select_button)
+        button_row.addWidget(existing_button)
+        button_row.addWidget(clear_existing_button)
         button_row.addWidget(clear_button)
         button_row.addStretch()
         button_row.addWidget(process_button)
@@ -58,10 +70,13 @@ class MainWindow(QMainWindow):
         layout.addWidget(title)
         layout.addWidget(
             QLabel(
-                "Select one or more Excel files. The app reads cell text locally and creates one combined output workbook."
+                "Select one or more Excel files. Optionally load an existing extracted workbook "
+                "and new rows will be appended underneath."
             )
         )
         layout.addLayout(button_row)
+        layout.addWidget(QLabel("Existing extract (optional):"))
+        layout.addWidget(self.existing_extract_label)
         layout.addWidget(QLabel("Selected files:"))
         layout.addWidget(self.file_list, stretch=2)
         layout.addWidget(QLabel("Status:"))
@@ -91,6 +106,25 @@ class MainWindow(QMainWindow):
 
         self._log(f"Added {len(filenames)} file(s).")
 
+    def select_existing_extract(self) -> None:
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load existing extracted workbook",
+            str(default_output_path().parent),
+            "Excel files (*.xlsx)",
+        )
+        if not filename:
+            return
+
+        self.existing_extract = Path(filename)
+        self.existing_extract_label.setText(str(self.existing_extract))
+        self._log(f"Loaded existing extract: {self.existing_extract.name}")
+
+    def clear_existing_extract(self) -> None:
+        self.existing_extract = None
+        self.existing_extract_label.setText("No existing extract loaded.")
+        self._log("Cleared existing extract.")
+
     def clear_files(self) -> None:
         self.files.clear()
         self.file_list.clear()
@@ -104,7 +138,7 @@ class MainWindow(QMainWindow):
         output_path, _ = QFileDialog.getSaveFileName(
             self,
             "Save extracted data",
-            str(default_output_path()),
+            str(self.existing_extract or default_output_path()),
             "Excel files (*.xlsx)",
         )
         if not output_path:
@@ -134,12 +168,16 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            write_results(results, output_path)
+            write_results(results, output_path, existing_path=self.existing_extract)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Save failed", f"Could not save output file:\n{exc}")
             return
 
-        summary = f"Saved {len(results)} row(s) to:\n{output_path}"
+        appended_note = ""
+        if self.existing_extract:
+            appended_note = f"\nAppended to existing data from:\n{self.existing_extract.name}"
+
+        summary = f"Saved {len(results)} new row(s) to:\n{output_path}{appended_note}"
         if failures:
             summary += f"\n\n{len(failures)} file(s) failed. See status area for details."
         QMessageBox.information(self, "Done", summary)

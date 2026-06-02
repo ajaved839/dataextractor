@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -10,14 +10,58 @@ from .extractor import ExtractionResult
 from .fields import FIELD_COLUMNS
 
 
-def write_results(results: list[ExtractionResult], output_path: str | Path) -> None:
+def read_existing_rows(existing_path: str | Path) -> list[dict[str, str]]:
+    workbook = load_workbook(existing_path, data_only=True, read_only=True)
+    worksheet = workbook.active
+
+    rows = worksheet.iter_rows(values_only=True)
+    header = next(rows, None)
+    if not header:
+        workbook.close()
+        return []
+
+    column_index = {
+        str(name).strip(): index
+        for index, name in enumerate(header)
+        if name is not None and str(name).strip()
+    }
+
+    existing_rows: list[dict[str, str]] = []
+    for row in rows:
+        if not row or all(value in (None, "") for value in row):
+            continue
+        data = {column: "" for column in FIELD_COLUMNS}
+        for column in FIELD_COLUMNS:
+            index = column_index.get(column)
+            if index is None or index >= len(row):
+                continue
+            value = row[index]
+            data[column] = "" if value is None else str(value).strip()
+        existing_rows.append(data)
+
+    workbook.close()
+    return existing_rows
+
+
+def write_results(
+    results: list[ExtractionResult],
+    output_path: str | Path,
+    existing_path: str | Path | None = None,
+) -> None:
+    rows: list[dict[str, str]] = []
+    if existing_path:
+        rows.extend(read_existing_rows(existing_path))
+
+    for result in results:
+        rows.append(result.data)
+
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "Extracted Data"
 
     worksheet.append(FIELD_COLUMNS)
-    for result in results:
-        worksheet.append([result.data.get(column, "") for column in FIELD_COLUMNS])
+    for row in rows:
+        worksheet.append([row.get(column, "") for column in FIELD_COLUMNS])
 
     _style_sheet(worksheet)
     workbook.save(output_path)
